@@ -1,0 +1,35 @@
+<launch>
+  <!-- Launch map_server without printing output to terminal -->
+  <!-- <node pkg="map_server" type="map_server" name="map_server" output="log"
+    args="$(find simple_planner)/maps/map_with_obstacle.yaml">
+    <param name="frame_id" value="map"/>
+  </node> -->
+
+  <node pkg="map_server" type="map_server" name="map_server" args="$(find simple_planner)/maps/static_map/cappero_laser_odom_diag_2020-05-06-16-26-03.yaml">
+  </node>
+
+  <!-- <node pkg="tf2_ros" type="static_transform_publisher" name="map_to_odom" args="0 0 0 0 0 0 map odom" /> -->
+
+
+  <!-- Launch Rviz -->
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find simple_planner)/rviz/nav_config.rviz" />
+
+
+  <!-- Launch stageros -->
+  <!-- <node pkg="stage_ros" type="stageros" name="stage" args="$(find simple_planner)/maps/static_map/cappero_laser_odom_diag_obstacle_2020-05-06-16-26-03.world" output="screen"/> -->
+
+
+
+  <!-- Launch AMCL for localization -->
+  <!-- <node pkg="amcl" type="amcl" name="amcl" output="screen">
+    <param name="use_map_topic" value="true"/>
+    <param name="odom_frame_id" value="odom"/>
+    <param name="base_frame_id" value="base_link"/>
+    <remap from="scan" to="base_scan"/>
+  </node>  -->
+
+
+  <!-- Launch your planner node -->
+  <!-- <node pkg="simple_planner" type="planner_node" name="planner_node" output="screen" /> -->
+  <!-- <node pkg="simple_planner" type="main" name="main" output="screen" /> -->
+</launch>
