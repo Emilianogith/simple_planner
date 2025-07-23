@@ -8,7 +8,11 @@ find_package(catkin REQUIRED COMPONENTS
   tf
   tf2_ros
   geometry_msgs
+  OpenCV REQUIRED
+  Eigen3 REQUIRED
 )
+
+
 
 
 catkin_package(
@@ -21,12 +25,15 @@ catkin_package(
   
 include_directories(
   include
+  ${EIGEN3_INCLUDE_DIRS}
+  ${OpenCV_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
   )
 
 add_executable(planner_node
   src/planner_node.cpp
   src/map.cpp
+  src/grid_map.cpp
 )
 
 target_link_libraries(planner_node

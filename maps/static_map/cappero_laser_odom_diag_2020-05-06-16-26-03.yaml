@@ -1,6 +1,15 @@
 image: cappero_laser_odom_diag_2020-05-06-16-26-03.pgm
 resolution: 0.05
-origin: [-52.0, -12.0, 0.0]
+origin: [0.0, 0.0,  0.0]
 negate: 0
 occupied_thresh: 0.65
 free_thresh: 0.196
+
+
+
+# image: cappero_laser_odom_diag_2020-05-06-16-26-03.pgm
+# resolution: 0.05
+# origin: [-106.9, -49.35, 0.0]  # flip Y and shift origin
+# negate: 0
+# occupied_thresh: 0.65
+# free_thresh: 0.196
