@@ -13,7 +13,7 @@ float resolution = 0.05f;
 GridMap grid_map(resolution);
 Vector2f world_initial_pos;
 Vector2f world_goal_pos;
-bool initial_pos_received = false, goal_pos_received = false;
+bool initial_pos_received = false, goal_pos_received = false, new_received = false;
 
 ros::NodeHandle* nh_ptr = nullptr;
 ros::Publisher marker_pub;
@@ -28,6 +28,7 @@ void initialCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& m
                      << ", y=" << msg->pose.pose.position.y);
         world_initial_pos = world_pos;
         initial_pos_received = true;
+        new_received = true;
 
         // display a green marker for the initial position
         displayMarker(marker_pub, world_initial_pos, 0, 0.0f, 1.0f, 0.0f);
@@ -42,6 +43,7 @@ void goalCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
                      << ", y=" << msg->pose.position.y);
         world_goal_pos = world_pos;
         goal_pos_received = true;
+        new_received = true;
 
         // display a red marker for the goal position
         displayMarker(marker_pub, world_goal_pos, 1, 1.0f, 0.0f, 0.0f);    
@@ -51,18 +53,6 @@ void goalCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
 
 
 
-
-std::vector<Vector2f> plan(const Vector2f& start, const Vector2f& goal, int num_points = 50) {
-    std::vector<Vector2f> path;
-
-    for (int i = 0; i <= num_points; ++i) {
-        float t = static_cast<float>(i) / num_points;
-        Vector2f point = (1.0f - t) * start + t * goal;
-        path.push_back(point);
-    }
-
-    return path;
-}
 
 
 
@@ -107,31 +97,16 @@ int main(int argc, char** argv) {
     while (ros::ok()) {
         ros::spinOnce();
 
-        if (initial_pos_received && goal_pos_received) {
+        if (initial_pos_received && goal_pos_received && new_received) {
             ROS_INFO("Both initial and goal positions received. Ready to plan.");
             ROS_INFO_STREAM("Initial Position: " << world_initial_pos.transpose());
             ROS_INFO_STREAM("Goal Position:    " << world_goal_pos.transpose());
             
-            
-            
-            // TODO: call planner here
-
-
-
-            // std::vector<Eigen::Vector2f> path = plan(world_initial_pos, world_goal_pos);  
             // std::vector<Eigen::Vector2f> path = planAStar(grid_map, world_initial_pos, world_goal_pos);
-
-        
-
-            // metti un if per non farlo entrare tutte le volte
             std::vector<Vector2f> path = astarWithCostMap(grid_map, cost_map, world_initial_pos, world_goal_pos);
 
-
             publishPath(path_pub, path);
-
-
-
-
+            new_received = false;
         }
 
         rate.sleep();

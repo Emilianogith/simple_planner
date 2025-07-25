@@ -1,7 +1,7 @@
 #include "simple_planner/utils.h"
 
 #include <queue>
-#include <unordered_map>
+#include <map>
 #include <cmath>
 
 
@@ -87,7 +87,6 @@ void publishPath(const ros::Publisher& path_pub,
     }
 
     path_pub.publish(path_msg);
-    ROS_INFO("Published path with %lu points", path_points.size());
 }
 
 
@@ -157,7 +156,13 @@ std::vector<Vector2f> astarWithCostMap(const GridMap& grid_map,
             if (!isFree(neighbor_pos.y(), neighbor_pos.x(), grid_map))
                 continue;
 
-            float step_cost = (d.x() == 0 || d.y() == 0) ? 1.0f : std::sqrt(2.0f);
+            float step_cost;
+            if (d.x() == 0 || d.y() == 0){
+                step_cost = 1.0f;
+            }else{
+                step_cost = std::sqrt(2.0f);
+            }
+           
 
             float dist_to_obstacle = cost_map(neighbor_pos.y(), neighbor_pos.x());
             float obstacle_penalty = 100.0f / (dist_to_obstacle + 1e-3f);  // higher if closer
