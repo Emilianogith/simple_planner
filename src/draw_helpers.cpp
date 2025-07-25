@@ -1,4 +1,4 @@
-#include "draw_helpers.h"
+#include "simple_planner/draw_helpers.h"
 
 void drawLine(Canvas& dest, const Eigen::Vector2f& p0, const Eigen::Vector2f& p1, uint8_t color) {
   cv::line(dest, cv::Point(p0[0], p0[1]), cv::Point(p1[0], p1[1]),

@@ -10,6 +10,7 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   OpenCV REQUIRED
   Eigen3 REQUIRED
+  visualization_msgs
 )
 
 
@@ -34,6 +35,8 @@ add_executable(planner_node
   src/planner_node.cpp
   src/map.cpp
   src/grid_map.cpp
+  src/utils.cpp
+  src/dmap.cpp
 )
 
 target_link_libraries(planner_node
