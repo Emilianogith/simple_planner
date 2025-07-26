@@ -2,7 +2,9 @@
 
 #include <queue>
 #include <map>
-#include <cmath>
+#include <iostream>
+#include <unordered_map>
+#include <climits>
 
 
 
@@ -104,82 +106,73 @@ std::vector<Vector2i> extractObstacles(const GridMap& grid_map) {
     return obstacles;
 }
 
-bool inBounds (int& r, int& c, const GridMap& grid_map) {
-        return r >= 0 && r < grid_map.rows && c >= 0 && c < grid_map.cols;
-};
 
-bool isFree (int& r, int& c, const GridMap& grid_map) {
-    return inBounds(r, c, grid_map) && grid_map(r, c) > 200;
-};
+std::vector<Node> get_neighbors(Node n, const std::vector<std::vector<int8_t>> &grid) {
+    std::vector<Node> neighbors;
+    std::vector<std::pair<int, int>> directions = {{1,0},{-1,0},{0,1},{0,-1}};
+    for (auto d : directions) {
+        int nx = n.x + d.first;
+        int ny = n.y + d.second;
 
-float heuristic (const Vector2i& a, const Vector2i& b) {
-    return (a - b).cast<float>().norm();  // Euclidean distance
-};
-
-std::vector<Vector2f> astarWithCostMap(const GridMap& grid_map,
-                                       const Grid_<float>& cost_map,
-                                       const Vector2f& world_start,
-                                       const Vector2f& world_goal) {
-    Vector2i start = grid_map.world2grid(world_start).cast<int>();
-    Vector2i goal  = grid_map.world2grid(world_goal).cast<int>();
-
-    std::priority_queue<Node, std::vector<Node>, std::greater<Node>> open;
-    std::map<Vector2i, Node, Vector2iCompare> all_nodes;
-
-    Node start_node{start, 0.0f, heuristic(start, goal), nullptr};
-    open.push(start_node);
-    all_nodes[start] = start_node;
-
-    const std::vector<Vector2i> directions = {
-        {1, 0}, {-1, 0}, {0, 1}, {0, -1},
-        {1, 1}, {-1, -1}, {1, -1}, {-1, 1}
-    };
-
-    while (!open.empty()) {
-        Node current = open.top();
-        open.pop();
-
-        if (current.pos == goal) {
-            // Reconstruct path
-            std::vector<Vector2f> path;
-            Node* n = &all_nodes[current.pos];
-            while (n) {
-                path.push_back(grid_map.grid2world(n->pos.cast<float>()));
-                n = n->parent;
-            }
-            std::reverse(path.begin(), path.end());
-            return path;
+        //based on data in /map topic : 0 = free; 100 = occupied;
+        if (nx >= 0 && ny >= 0 && ny < grid.size() && nx < grid[0].size() && grid[ny][nx] == 0) {
+            neighbors.push_back({nx, ny});
         }
+    }
+    return neighbors;
+}
 
-        for (const auto& d : directions) {
-            Vector2i neighbor_pos = current.pos + d;
-            if (!isFree(neighbor_pos.y(), neighbor_pos.x(), grid_map))
-                continue;
+std::vector<Node> reconstruct_path(std::unordered_map<Node, Node, NodeHash>& cameFrom, Node current) {
+    std::vector<Node> path = {current};
+    while (cameFrom.find(current) != cameFrom.end()) {
+        current = cameFrom[current];
+        path.insert(path.begin(), current);
+    }
+    return path;
+}
 
-            float step_cost;
-            if (d.x() == 0 || d.y() == 0){
-                step_cost = 1.0f;
-            }else{
-                step_cost = std::sqrt(2.0f);
-            }
-           
+std::vector<Node> A_Star(Node start, Node goal, const std::vector<std::vector<int8_t>> &grid, const Grid_<float>& cost_map) {
 
-            float dist_to_obstacle = cost_map(neighbor_pos.y(), neighbor_pos.x());
-            float obstacle_penalty = 100.0f / (dist_to_obstacle + 1e-3f);  // higher if closer
+    struct Compare {
+        bool operator()(std::pair<int, Node> a, std::pair<int, Node> b) {
+            return a.first > b.first;
+        }
+    };
+    // define the priority queue
+    std::priority_queue<std::pair<int, Node>, std::vector<std::pair<int, Node>>, Compare> openSet;
+    openSet.push({0, start});
 
-            float tentative_g = current.g + step_cost + obstacle_penalty;
+    std::unordered_map<Node, Node, NodeHash> cameFrom;
+    std::unordered_map<Node, float, NodeHash> gScore, fScore;
 
-            Node& neighbor = all_nodes[neighbor_pos];
-            if (tentative_g < neighbor.g) {
-                neighbor.pos = neighbor_pos;
-                neighbor.g = tentative_g;
-                neighbor.f = tentative_g + heuristic(neighbor_pos, goal);
-                neighbor.parent = &all_nodes[current.pos];
-                open.push(neighbor);
+    gScore[start] = 0.0;
+    fScore[start] = heuristic(start, goal);
+
+    while (!openSet.empty()) {
+        Node current = openSet.top().second;
+        openSet.pop();
+
+        if (current == goal)
+            return reconstruct_path(cameFrom, current);
+
+        
+        for (Node neighbor : get_neighbors(current, grid)) {
+            // Use cost from cost_map for the neighbor cell
+            float dist_to_obstacle = cost_map(neighbor.y, neighbor.x);
+            float obstacle_penalty = 60.0f / (dist_to_obstacle + 1e-3f);
+
+            float tentative_gScore = gScore[current] + obstacle_penalty;
+
+            // if neighbor not met before or has an higher cost of the new one
+            if (!gScore.count(neighbor) || tentative_gScore < gScore[neighbor]) {
+                cameFrom[neighbor] = current;   // parent of neighbor is current
+                gScore[neighbor] = tentative_gScore;
+                fScore[neighbor] = tentative_gScore + heuristic(neighbor, goal);
+                openSet.push({fScore[neighbor], neighbor});
             }
         }
     }
 
     ROS_WARN("A* failed to find a path.");
-    return {};
+    return {};  
 }

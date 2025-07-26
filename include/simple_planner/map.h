@@ -15,6 +15,10 @@ public:
     int getWidth() const { return width_; }
     int getHeight() const { return height_; }
 
+    const std::vector<std::vector<int8_t>>& getMapMatrix() const {
+    return map_matrix_;
+}
+
 private:
     ros::Subscriber map_sub_;
     std::vector<int8_t> map_data_;

@@ -7,9 +7,12 @@
 #include <nav_msgs/Path.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <vector>
+#include <functional> // for std::hash
+#include <cmath>
 
 #include "simple_planner/grid_map.h"
 #include "simple_planner/dmap.h"
+
 
 using Eigen::Vector2f;
 
@@ -24,32 +27,26 @@ void publishPath(const ros::Publisher& path_pub,
 
 std::vector<Vector2i> extractObstacles(const GridMap& grid_map);
 
+
 struct Node {
-    Vector2i pos;
-    float g = std::numeric_limits<float>::infinity();  // cost-so-far
-    float f = std::numeric_limits<float>::infinity();  // g + h
-    Node* parent = nullptr;
+    int x, y;
+    bool operator==(const Node &other) const { return x == other.x && y == other.y; }
+};
 
-    bool operator>(const Node& other) const {
-        return f > other.f;
+// Needed for using Node as key in unordered_map
+struct NodeHash {
+    size_t operator()(const Node &n) const {
+        return std::hash<int>()(n.x) ^ std::hash<int>()(n.y << 1);
     }
 };
 
-struct Vector2iCompare {
-    bool operator()(const Vector2i& a, const Vector2i& b) const {
-        if (a.x() == b.x())
-            return a.y() < b.y();
-        return a.x() < b.x();
-    }
-};
+inline float heuristic(Node a, Node b) {
+    // return abs(a.x - b.x) + abs(a.y - b.y);  // Manhattan distance
+    return std::sqrt((a.x - b.x) * (a.x - b.x) + // Euclidean distance
+                     (a.y - b.y) * (a.y - b.y));
+}
 
-bool inBounds (int& r, int& c, const GridMap& grid_map);
 
-bool isFree (int& r, int& c, const GridMap& grid_map);
-
-float heuristic (const Vector2i& a, const Vector2i& b);
-
-std::vector<Vector2f> astarWithCostMap(const GridMap& grid_map,
-                                       const Grid_<float>& cost_map,
-                                       const Vector2f& world_start,
-                                       const Vector2f& world_goal);
+std::vector<Node> get_neighbors(Node n, const std::vector<std::vector<int>> &grid);
+std::vector<Node> reconstruct_path(std::unordered_map<Node, Node, NodeHash> &cameFrom, Node current);
+std::vector<Node> A_Star(Node start, Node goal, const std::vector<std::vector<int8_t>> &grid, const Grid_<float>& cost_map);

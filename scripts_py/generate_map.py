@@ -9,4 +9,6 @@ bottom_right = (60, 60)
 draw.rectangle([top_left, bottom_right], fill=0)
 
 
-img.save('../maps/map_with_obstacle.pgm')
+img.save('../maps/map_with_obstacle.png')
+
+

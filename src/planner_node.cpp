@@ -7,6 +7,7 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <visualization_msgs/Marker.h>
+#include <chrono>
 
 float resolution = 0.05f; 
 
@@ -79,11 +80,13 @@ int main(int argc, char** argv) {
     Grid_<float> cost_map;
     dmap.copyTo(cost_map);
 
-     ROS_INFO("Finished computing stuffs");
+    ROS_INFO("Finished loading stuffs");
 
 
     ros::NodeHandle nh;
     nh_ptr = &nh;
+
+    MapHandler map_handler(nh);
 
     // initialize publishers
     ros::Publisher path_pub = nh.advertise<nav_msgs::Path>("planned_path", 1);
@@ -101,11 +104,36 @@ int main(int argc, char** argv) {
             ROS_INFO("Both initial and goal positions received. Ready to plan.");
             ROS_INFO_STREAM("Initial Position: " << world_initial_pos.transpose());
             ROS_INFO_STREAM("Goal Position:    " << world_goal_pos.transpose());
-            
-            // std::vector<Eigen::Vector2f> path = planAStar(grid_map, world_initial_pos, world_goal_pos);
-            std::vector<Vector2f> path = astarWithCostMap(grid_map, cost_map, world_initial_pos, world_goal_pos);
+        
 
-            publishPath(path_pub, path);
+            auto start_time = std::chrono::high_resolution_clock::now();
+
+            // converet world positions into grid positions because A_Star works for cells
+            Eigen::Vector2i start_grid = grid_map.world2grid(world_initial_pos).cast<int>();
+            Eigen::Vector2i goal_grid = grid_map.world2grid(world_goal_pos).cast<int>();
+
+            Node start, goal;
+            start.x = start_grid.x(); start.y = start_grid.y();
+            goal.x = goal_grid.x();goal.y = goal_grid.y();
+
+            std::vector<Node> path = A_Star(start, goal, map_handler.getMapMatrix(), cost_map);
+
+            // outpath is in grid coords, in order to publish it we must convert it into world coords
+            std::vector<Eigen::Vector2f> world_path;
+            world_path.reserve(path.size());
+
+            // Convert each Node position from grid to world coordinates
+            for (const Node& node : path) {
+                Eigen::Vector2f grid_pos(node.x, node.y);
+                Eigen::Vector2f world_pos = grid_map.grid2world(grid_pos);
+                world_path.push_back(world_pos);
+            }
+
+            auto end_time = std::chrono::high_resolution_clock::now();
+            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+            std::cout << "Planning execution time: " << duration.count() << " ms" << std::endl;
+
+            publishPath(path_pub, world_path);
             new_received = false;
         }
 
