@@ -43,4 +43,16 @@ target_link_libraries(planner_node
   ${catkin_LIBRARIES}
 )
 
+add_executable(localized_planner
+  src/localized_planner.cpp
+  src/map.cpp
+  src/grid_map.cpp
+  src/utils.cpp
+  src/dmap.cpp
+)
+
+target_link_libraries(localized_planner
+  ${catkin_LIBRARIES}
+)
+
 

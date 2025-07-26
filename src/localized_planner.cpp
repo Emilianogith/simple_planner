@@ -9,32 +9,21 @@
 #include <visualization_msgs/Marker.h>
 #include <chrono>
 
+#include <geometry_msgs/Point.h>
+#include <tf/transform_listener.h>
+
+
 float resolution = 0.05f; 
 
 GridMap grid_map(resolution);
-Vector2f world_initial_pos;
 Vector2f world_goal_pos;
-bool initial_pos_received = false, goal_pos_received = false, new_received = false;
+bool goal_pos_received = false;
 
 ros::NodeHandle* nh_ptr = nullptr;
 ros::Publisher marker_pub;
 
+tf::TransformListener* listener;
 
-
-void initialCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg)
-{
-    Vector2f world_pos = Vector2f(msg->pose.pose.position.x, msg->pose.pose.position.y);
-    if (!checkCollision(grid_map, world_pos)){
-        ROS_INFO_STREAM("Initial pose: x=" << msg->pose.pose.position.x
-                     << ", y=" << msg->pose.pose.position.y);
-        world_initial_pos = world_pos;
-        initial_pos_received = true;
-        new_received = true;
-
-        // display a green marker for the initial position
-        displayMarker(marker_pub, world_initial_pos, 0, 0.0f, 1.0f, 0.0f);
-    }
-}
 
 void goalCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
@@ -44,14 +33,11 @@ void goalCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
                      << ", y=" << msg->pose.position.y);
         world_goal_pos = world_pos;
         goal_pos_received = true;
-        new_received = true;
 
         // display a red marker for the goal position
         displayMarker(marker_pub, world_goal_pos, 1, 1.0f, 0.0f, 0.0f);    
     }
 }
-
-
 
 
 
@@ -88,28 +74,45 @@ int main(int argc, char** argv) {
 
     MapHandler map_handler(nh);
 
+    listener = new tf::TransformListener();
+    Vector2f current_pos;
+    tf::StampedTransform transform;
+
+
     // initialize publishers
     ros::Publisher path_pub = nh.advertise<nav_msgs::Path>("planned_path", 1);
     marker_pub = nh.advertise<visualization_msgs::Marker>("visualization_marker", 1);
 
     ros::Subscriber goal_sub = nh.subscribe("/move_base_simple/goal", 10, goalCallback);
-    ros::Subscriber initial_sub = nh.subscribe("/initialpose", 10, initialCallback);
 
 
     ros::Rate rate(10);
     while (ros::ok()) {
+
+        try {
+            listener->lookupTransform("map", "base_link", ros::Time(0), transform);
+        } catch (tf::TransformException &ex) {
+            ROS_WARN("Waiting for transform map -> base_link: %s", ex.what());
+            rate.sleep();  // wait before retrying
+            continue;
+        }
+
+
+        current_pos.x() = transform.getOrigin().x();
+        current_pos.y() = transform.getOrigin().y();
+
         ros::spinOnce();
 
-        if (initial_pos_received && goal_pos_received && new_received) {
-            ROS_INFO("Both initial and goal positions received. Ready to plan.");
-            ROS_INFO_STREAM("Initial Position: " << world_initial_pos.transpose());
-            ROS_INFO_STREAM("Goal Position:    " << world_goal_pos.transpose());
+        if (goal_pos_received) {
+            ROS_INFO("Goal positions received. Ready to plan.");
+            ROS_INFO_STREAM("Current position: " << current_pos.transpose());
+            ROS_INFO_STREAM("Goal position:    " << world_goal_pos.transpose());
         
 
             auto start_time = std::chrono::high_resolution_clock::now();
 
             // converet world positions into grid positions because A_Star works for cells
-            Eigen::Vector2i start_grid = grid_map.world2grid(world_initial_pos).cast<int>();
+            Eigen::Vector2i start_grid = grid_map.world2grid(current_pos).cast<int>();
             Eigen::Vector2i goal_grid = grid_map.world2grid(world_goal_pos).cast<int>();
 
             Node start, goal;
@@ -134,7 +137,7 @@ int main(int argc, char** argv) {
             std::cout << "Planning execution time: " << duration.count() << " ms" << std::endl;
 
             publishPath(path_pub, world_path);
-            new_received = false;
+            // goal_pos_received = false;
         }
 
         rate.sleep();

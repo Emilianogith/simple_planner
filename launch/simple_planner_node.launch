@@ -1,0 +1,17 @@
+<launch>
+
+  <arg name="map_yaml" default="$(find simple_planner)/maps/static_map/cappero_laser_odom_diag_2020-05-06-16-26-03.yaml" />
+  <arg name="map_png" default="$(find simple_planner)/maps/static_map/cappero_laser_odom_diag_2020-05-06-16-26-03.png" />
+
+  
+  <!-- Launch map server -->
+  <node name="map_server" pkg="map_server" type="map_server" args="$(arg map_yaml)" output="screen" />
+
+
+  <!-- Launch Rviz -->
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find simple_planner)/rviz/new_config.rviz" />
+
+  <!-- Launch the planner node -->
+  <node name="planner_node" pkg="simple_planner" type="planner_node" args="$(arg map_png)" output="screen"/>
+
+</launch>
