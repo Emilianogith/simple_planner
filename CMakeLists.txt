@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(simple_planner)
 
+
+set(OpenCV_DIR "/usr/lib/x86_64-linux-gnu/cmake/opencv4")
+set(Eigen3_DIR "/usr/lib/cmake/eigen3")
+
+
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
@@ -41,6 +46,7 @@ add_executable(planner_node
 
 target_link_libraries(planner_node
   ${catkin_LIBRARIES}
+  ${OpenCV_LIBS}
 )
 
 add_executable(localized_planner
@@ -53,6 +59,7 @@ add_executable(localized_planner
 
 target_link_libraries(localized_planner
   ${catkin_LIBRARIES}
+  ${OpenCV_LIBS}
 )
 
 
