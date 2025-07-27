@@ -19,10 +19,7 @@ GridMap grid_map(resolution);
 Vector2f world_goal_pos;
 bool goal_pos_received = false;
 
-ros::NodeHandle* nh_ptr = nullptr;
 ros::Publisher marker_pub;
-
-tf::TransformListener* listener;
 
 
 void goalCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
@@ -70,11 +67,10 @@ int main(int argc, char** argv) {
 
 
     ros::NodeHandle nh;
-    nh_ptr = &nh;
 
     MapHandler map_handler(nh);
 
-    listener = new tf::TransformListener();
+    tf::TransformListener listener;
     Vector2f current_pos;
     tf::StampedTransform transform;
 
@@ -82,7 +78,7 @@ int main(int argc, char** argv) {
     // initialize publishers
     ros::Publisher path_pub = nh.advertise<nav_msgs::Path>("planned_path", 1);
     marker_pub = nh.advertise<visualization_msgs::Marker>("visualization_marker", 1);
-
+    // initialize subscriber
     ros::Subscriber goal_sub = nh.subscribe("/move_base_simple/goal", 10, goalCallback);
 
 
@@ -90,7 +86,7 @@ int main(int argc, char** argv) {
     while (ros::ok()) {
 
         try {
-            listener->lookupTransform("map", "base_link", ros::Time(0), transform);
+            listener.lookupTransform("map", "base_link", ros::Time(0), transform);
         } catch (tf::TransformException &ex) {
             ROS_WARN("Waiting for transform map -> base_link: %s", ex.what());
             rate.sleep();  // wait before retrying
@@ -137,7 +133,6 @@ int main(int argc, char** argv) {
             std::cout << "Planning execution time: " << duration.count() << " ms" << std::endl;
 
             publishPath(path_pub, world_path);
-            // goal_pos_received = false;
         }
 
         rate.sleep();

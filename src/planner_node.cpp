@@ -16,7 +16,6 @@ Vector2f world_initial_pos;
 Vector2f world_goal_pos;
 bool initial_pos_received = false, goal_pos_received = false, new_received = false;
 
-ros::NodeHandle* nh_ptr = nullptr;
 ros::Publisher marker_pub;
 
 
@@ -84,14 +83,13 @@ int main(int argc, char** argv) {
 
 
     ros::NodeHandle nh;
-    nh_ptr = &nh;
 
     MapHandler map_handler(nh);
 
     // initialize publishers
     ros::Publisher path_pub = nh.advertise<nav_msgs::Path>("planned_path", 1);
     marker_pub = nh.advertise<visualization_msgs::Marker>("visualization_marker", 1);
-
+    // initialize subscribers
     ros::Subscriber goal_sub = nh.subscribe("/move_base_simple/goal", 10, goalCallback);
     ros::Subscriber initial_sub = nh.subscribe("/initialpose", 10, initialCallback);
 
